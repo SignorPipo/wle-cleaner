@@ -39,7 +39,7 @@ const Sound = {
 };
 `;
 
-export function parseEditorBundle() {
+export function parseEditorBundle(editorExtraBundlePath: string | null) {
     const isolate = new ivm.Isolate({ memoryLimit: 128 });
     const context = isolate.createContextSync();
     const jail = context.global;
@@ -49,8 +49,18 @@ export function parseEditorBundle() {
         components.set(typeName, properties);
     });
 
-    let editorBundleText = readFileSync('cache/js/_editor_bundle.cjs', { encoding: 'utf8' });
-    editorBundleText = `${BUNDLE_PREAMBLE}\n${editorBundleText}`;
+    let editorBundleText: string
+    try {
+        editorBundleText = readFileSync('cache/js/_editor_bundle.cjs', { encoding: 'utf8' });
+    } catch(err) {
+        console.error(err);
+        throw new Error('Could not open editor bundle. Make sure you have build the project in the Wonderland Editor before running this tool');
+    }
+
+    let editorExtraBundleText = '';
+    if (editorExtraBundlePath) editorExtraBundleText = readFileSync(editorExtraBundlePath, { encoding: "utf8" });
+
+    editorBundleText = `${BUNDLE_PREAMBLE}\n${editorExtraBundleText}\n${editorBundleText}`;
 
     const editorIndexModule = isolate.compileModuleSync(editorBundleText);
     editorIndexModule.instantiateSync(context, (specifier) => {
